@@ -5,7 +5,7 @@ import { realpathSync } from "node:fs";
 import { loadVisualPlan } from "./load.js";
 import { renderToFiles } from "./render.js";
 import { initScenario, listScenarioInfos } from "./init.js";
-import { prepareReview, ReviewInputError, startReviewServer, type PreparedReview } from "./review.js";
+import { prepareReview, ReviewInputError, setReviewLocalUrl, startReviewServer, type PreparedReview } from "./review.js";
 import { watchVisualPlan } from "./watch.js";
 import {
   alignmentModes,
@@ -97,7 +97,7 @@ function usage(): string {
     "  visualplan validate <file> [--json]",
     "  visualplan render <file> [--out-dir <dir>] [--html <file>] [--svg <file>] [--json]",
     "  visualplan watch <file> [--out-dir <dir>] [--port <port>] [--host <host>] [--json]",
-    "  visualplan review <file-or-output-dir-or-html> [--port 8502] [--host 127.0.0.1] [--out-dir .visualplan/review] [--json]",
+    "  visualplan review <file-or-output-dir-or-html> [--port 8502] [--host 127.0.0.1] [--out-dir .visualplan/review] [--no-server] [--json]",
   ].join("\n");
 }
 
@@ -135,6 +135,10 @@ function optionMode(options: ParsedOptions, key: string): AlignmentMode | undefi
 
 function wantsJson(args: string[]): boolean {
   return args.includes("--json");
+}
+
+function displayHost(host: string): string {
+  return host === "0.0.0.0" ? "127.0.0.1" : host;
 }
 
 function modeFor(plan: VisualPlan): AlignmentMode {
@@ -389,9 +393,27 @@ async function reviewCommand(args: string[], io: CliIo, json: boolean): Promise<
     outDir: optionString(options, "out-dir"),
     generatedAt: new Date(),
   });
+  const host = optionString(options, "host") ?? "127.0.0.1";
+  const port = optionNumber(options, "port") ?? 8502;
+
+  if (options.values["no-server"] === true) {
+    await setReviewLocalUrl(prepared, `http://${displayHost(host)}:${port}/`);
+    if (json) {
+      writeJson(io, prepared.metadata);
+    } else {
+      io.stdout(`staged_review=${prepared.metadata.title}\n`);
+      io.stdout(`html_path=${prepared.metadata.htmlPath}\n`);
+      if (prepared.metadata.svgPath) {
+        io.stdout(`svg_path=${prepared.metadata.svgPath}\n`);
+      }
+      io.stdout(`local_url=${prepared.metadata.localUrl}\n`);
+    }
+    return;
+  }
+
   const server = await startReviewServer(prepared, {
-    host: optionString(options, "host") ?? "127.0.0.1",
-    port: optionNumber(options, "port") ?? 8502,
+    host,
+    port,
   });
 
   if (json) {

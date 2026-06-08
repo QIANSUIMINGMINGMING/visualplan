@@ -185,6 +185,19 @@ async function writeMetadata(dir: string, metadata: ReviewMetadata): Promise<voi
   await writeFile(join(dir, "review.json"), `${JSON.stringify(metadata, null, 2)}\n`, "utf8");
 }
 
+async function readCurrentMetadata(prepared: PreparedReview): Promise<ReviewMetadata> {
+  try {
+    return JSON.parse(await readFile(join(prepared.currentDir, "review.json"), "utf8")) as ReviewMetadata;
+  } catch {
+    return prepared.metadata;
+  }
+}
+
+export async function setReviewLocalUrl(prepared: PreparedReview, localUrl: string): Promise<void> {
+  prepared.metadata.localUrl = localUrl;
+  await writeMetadata(prepared.currentDir, prepared.metadata);
+}
+
 async function snapshotReview(prepared: PreparedReview): Promise<void> {
   const historyDir = join(prepared.outDir, "history", prepared.metadata.reviewId);
   await mkdir(historyDir, { recursive: true });
@@ -418,7 +431,7 @@ async function handleRequest(
     return;
   }
   if (pathname === "/api/current") {
-    send(response, 200, `${JSON.stringify(prepared.metadata, null, 2)}\n`, "application/json; charset=utf-8", method);
+    send(response, 200, `${JSON.stringify(await readCurrentMetadata(prepared), null, 2)}\n`, "application/json; charset=utf-8", method);
     return;
   }
   if (pathname === "/list") {
@@ -470,7 +483,7 @@ export async function startReviewServer(
 
   const address = server.address() as AddressInfo;
   const localUrl = `http://${displayHost(host)}:${address.port}/`;
-  prepared.metadata.localUrl = localUrl;
+  await setReviewLocalUrl(prepared, localUrl);
 
   return {
     server,

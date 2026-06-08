@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { prepareReview, startReviewServer } from "../src/review.js";
+import { prepareReview, setReviewLocalUrl, startReviewServer } from "../src/review.js";
 
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
 
@@ -50,6 +50,16 @@ describe("visualplan review server", () => {
       expect(listResponse.status).toBe(200);
       expect(listHtml).toContain("VisualPlan Reviews");
       expect(listHtml).toContain("Codex Goal Alignment Checkpoint");
+
+      const next = await prepareReview(resolve(root, "examples/session_intent_alignment.yaml"), {
+        outDir: tempDir,
+        generatedAt: new Date("2026-06-09T00:01:00.000Z"),
+      });
+      await setReviewLocalUrl(next, server.localUrl);
+      const updatedResponse = await fetch(`${server.localUrl}api/current`);
+      const updated = await updatedResponse.json() as { mode: string; objectIds: string[] };
+      expect(updated.mode).toBe("session");
+      expect(updated.objectIds).toContain("agent_understanding");
 
       await expect(rawStatus(server.localUrl, "/outputs/%2e%2e/current/visualplan.html")).resolves.toBe(400);
     } finally {

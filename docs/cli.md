@@ -53,13 +53,16 @@ provided, it also serves the current output with the same local review server.
 ### Review
 
 ```bash
-visualplan review <file-or-output-dir-or-html> [--port 8502] [--host 127.0.0.1] [--out-dir .visualplan/review] [--json]
+visualplan review <file-or-output-dir-or-html> [--port 8502] [--host 127.0.0.1] [--out-dir .visualplan/review] [--no-server] [--json]
 ```
 
 If the source is YAML, VisualPlan validates and renders it into
 `.visualplan/review/current`. If the source is a rendered output directory or
 HTML file, VisualPlan stages it into the same current directory. The command
 then starts a local server.
+
+Use `--no-server` when a persistent review service is already running and the
+command should only update the shared `current` review directory.
 
 Routes:
 

@@ -89,7 +89,7 @@ visualplan scenarios [--mode <mode>] [--json]
 visualplan validate <file> [--json]
 visualplan render <file> [--out-dir <dir>] [--html <file>] [--svg <file>] [--json]
 visualplan watch <file> [--out-dir <dir>] [--port <port>] [--host <host>] [--json]
-visualplan review <file-or-output-dir-or-html> [--port 8502] [--host 127.0.0.1] [--out-dir .visualplan/review] [--json]
+visualplan review <file-or-output-dir-or-html> [--port 8502] [--host 127.0.0.1] [--out-dir .visualplan/review] [--no-server] [--json]
 ```
 
 See [docs/cli.md](docs/cli.md), [docs/agent-native.md](docs/agent-native.md),

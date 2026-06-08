@@ -33,8 +33,15 @@ whiteboard replacement.
 5. Start review:
 
    ```bash
-   visualplan review visualplan.yaml --json
-   ```
+visualplan review visualplan.yaml --json
+```
+
+If a persistent VisualPlan review service is already running, update it without
+binding a new port:
+
+```bash
+visualplan review visualplan.yaml --out-dir ~/.local/share/visualplan/review --no-server --json
+```
 
 6. Return the local URL, key object/relation/uncertainty IDs, and any warnings.
 7. Stop before implementation until the user approves or corrects the artifact.
