@@ -1,0 +1,112 @@
+title: Architecture Boundary Misunderstanding
+mode: architecture
+intent: Reveal whether the agent incorrectly believes a direct API to worker path is allowed in a CQRS-style system.
+objects:
+  - id: client
+    kind: node
+    label: Client
+    summary: Sends commands and reads query responses.
+    x: 70
+    y: 160
+  - id: api
+    kind: node
+    label: API
+    summary: Validates command intent and serves projection reads.
+    x: 300
+    y: 160
+  - id: command_log
+    kind: boundary
+    label: Command Log Boundary
+    summary: Durable handoff between synchronous API and async workers.
+    x: 540
+    y: 150
+  - id: worker
+    kind: node
+    label: Worker
+    summary: Executes side effects asynchronously.
+    x: 780
+    y: 160
+  - id: projection
+    kind: node
+    label: Projection
+    summary: Read model served by API.
+    x: 540
+    y: 330
+  - id: forbidden_call
+    kind: uncertainty
+    label: Direct Worker Call?
+    summary: The user must confirm whether any direct call exists or is forbidden.
+    x: 780
+    y: 330
+relations:
+  - id: rel_client_api
+    type: flow
+    from: client
+    to: api
+    label: request
+  - id: rel_api_log
+    type: flow
+    from: api
+    to: command_log
+    label: append
+  - id: rel_log_worker
+    type: flow
+    from: command_log
+    to: worker
+    label: consume
+  - id: rel_worker_projection
+    type: map
+    from: worker
+    to: projection
+    label: updates
+  - id: rel_api_projection
+    type: depend
+    from: api
+    to: projection
+    label: reads
+  - id: rel_api_worker_forbidden
+    type: forbid
+    from: api
+    to: worker
+    label: must not call
+space:
+  x_axis: Left-to-right shows the intended lifecycle from request to async execution.
+  y_axis: Top is command handling; bottom is read projection and uncertain shortcuts.
+  containment: The command log boundary separates synchronous API work from async worker work.
+  proximity: A node near the boundary is not permission to bypass the boundary.
+focus:
+  primary_path:
+    - rel_client_api
+    - rel_api_log
+    - rel_log_worker
+  key_boundaries:
+    - command_log
+  unresolved:
+    - unc_direct_worker_call
+  accepted:
+    - rel_api_worker_forbidden
+uncertainties:
+  - id: unc_direct_worker_call
+    target: forbidden_call
+    question: Is there a real source anchor for a direct API to worker call, or is this only a feared edge?
+    impact: If real, the implementation plan must address a boundary violation before feature work.
+    status: open
+revisions:
+  - id: rev_initial
+    date: "2026-06-08"
+    source: agent
+    note: Initial boundary map generated for user correction.
+    changed_objects:
+      - client
+      - api
+      - command_log
+      - worker
+      - projection
+      - forbidden_call
+    changed_relations:
+      - rel_client_api
+      - rel_api_log
+      - rel_log_worker
+      - rel_worker_projection
+      - rel_api_projection
+      - rel_api_worker_forbidden

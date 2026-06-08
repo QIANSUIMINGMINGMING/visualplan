@@ -1,0 +1,110 @@
+title: Ownership Responsibility Map
+mode: architecture
+intent: Align on who owns each boundary before the agent changes shared infrastructure.
+objects:
+  - id: product_team
+    kind: region
+    label: Product Team
+    summary: Owns user-facing behavior and release risk.
+    x: 80
+    y: 110
+    width: 330
+    height: 260
+  - id: infra_team
+    kind: region
+    label: Infrastructure Team
+    summary: Owns runtime, deployment, and service reliability boundaries.
+    x: 500
+    y: 110
+    width: 360
+    height: 260
+  - id: feature_module
+    kind: node
+    label: Feature Module
+    summary: Code the agent wants to edit.
+    x: 130
+    y: 190
+  - id: deployment_config
+    kind: boundary
+    label: Deployment Config
+    summary: Shared service config with ownership outside the feature module.
+    x: 560
+    y: 190
+  - id: review_handoff
+    kind: node
+    label: Review Handoff
+    summary: Required cross-owner approval or evidence.
+    x: 360
+    y: 410
+  - id: owner_gap
+    kind: uncertainty
+    label: Owner Gap
+    summary: Unclear whether config change is allowed in the current task.
+    x: 560
+    y: 410
+relations:
+  - id: rel_product_contains_feature
+    type: contain
+    from: product_team
+    to: feature_module
+    label: owns
+  - id: rel_infra_contains_config
+    type: contain
+    from: infra_team
+    to: deployment_config
+    label: owns
+  - id: rel_feature_config_depend
+    type: depend
+    from: feature_module
+    to: deployment_config
+    label: requires
+  - id: rel_config_needs_handoff
+    type: order
+    from: deployment_config
+    to: review_handoff
+    label: before edit
+  - id: rel_gap_blocks_config
+    type: conflict
+    from: owner_gap
+    to: deployment_config
+    label: blocks
+space:
+  x_axis: Left-to-right separates product ownership from infrastructure ownership.
+  y_axis: Top is owned surface; bottom is coordination requirement.
+  containment: Regions mean responsibility domains and review authority.
+  proximity: Cross-region adjacency signals coordination need, not permission.
+focus:
+  primary_path:
+    - rel_feature_config_depend
+    - rel_config_needs_handoff
+  key_boundaries:
+    - deployment_config
+  unresolved:
+    - unc_config_owner
+  accepted:
+    - product_team
+    - infra_team
+uncertainties:
+  - id: unc_config_owner
+    target: owner_gap
+    question: Is the deployment config in scope for the current agent task?
+    impact: Editing it without owner alignment could create unrelated blast radius.
+    status: open
+revisions:
+  - id: rev_initial
+    date: "2026-06-08"
+    source: agent
+    note: Initial ownership map prepared before touching shared config.
+    changed_objects:
+      - product_team
+      - infra_team
+      - feature_module
+      - deployment_config
+      - review_handoff
+      - owner_gap
+    changed_relations:
+      - rel_product_contains_feature
+      - rel_infra_contains_config
+      - rel_feature_config_depend
+      - rel_config_needs_handoff
+      - rel_gap_blocks_config

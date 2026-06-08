@@ -1,0 +1,110 @@
+title: Codex Goal Alignment Checkpoint
+mode: goal
+source:
+  agent: Codex
+  surface: goal mode
+  goal: The active goal text or user-provided objective should be summarized here.
+intent: Align the user and agent on the active goal, success criteria, current state, blockers, risks, and next checkpoint.
+objects:
+  - id: active_goal
+    kind: node
+    label: Active Goal
+    summary: The objective the agent believes it is pursuing.
+    x: 80
+    y: 150
+  - id: success_criteria
+    kind: boundary
+    label: Success Criteria
+    summary: Observable conditions required before the goal is complete.
+    x: 360
+    y: 110
+  - id: current_state
+    kind: evidence
+    label: Current State
+    summary: Repo facts, tool outputs, or completed steps already known.
+    x: 360
+    y: 310
+  - id: execution_path
+    kind: node
+    label: Execution Path
+    summary: The next concrete steps the agent expects to take.
+    x: 680
+    y: 150
+  - id: blocker_surface
+    kind: uncertainty
+    label: Blocker Surface
+    summary: Missing information or external state that could block progress.
+    x: 680
+    y: 360
+  - id: next_checkpoint
+    kind: node
+    label: Next Checkpoint
+    summary: The point where the agent should stop for review or report completion.
+    x: 980
+    y: 150
+relations:
+  - id: rel_goal_to_success
+    type: depend
+    from: active_goal
+    to: success_criteria
+    label: defines
+  - id: rel_state_to_path
+    type: map
+    from: current_state
+    to: execution_path
+    label: informs
+  - id: rel_success_to_path
+    type: order
+    from: success_criteria
+    to: execution_path
+    label: constrains
+  - id: rel_path_to_checkpoint
+    type: order
+    from: execution_path
+    to: next_checkpoint
+    label: reaches
+  - id: rel_blocker_to_path
+    type: conflict
+    from: blocker_surface
+    to: execution_path
+    label: may interrupt
+space:
+  x_axis: Left is the active goal; right is progress toward the next checkpoint.
+  y_axis: Top is agreed direction; bottom is evidence and potential blockage.
+  containment: Boundaries represent completion conditions, not task cards.
+  proximity: Nearby goal, state, and blocker items should be reviewed together.
+focus:
+  primary_path:
+    - rel_goal_to_success
+    - rel_success_to_path
+    - rel_path_to_checkpoint
+  key_boundaries:
+    - success_criteria
+  unresolved:
+    - unc_goal_visibility
+  accepted:
+    - active_goal
+uncertainties:
+  - id: unc_goal_visibility
+    target: blocker_surface
+    question: Is the active goal text and success criteria visible enough to judge whether this path is complete?
+    impact: If the goal is stale or incomplete, the agent may optimize for the wrong finish line.
+    status: open
+revisions:
+  - id: rev_initial
+    date: "2026-06-09"
+    source: agent
+    note: Initial Codex goal alignment checkpoint.
+    changed_objects:
+      - active_goal
+      - success_criteria
+      - current_state
+      - execution_path
+      - blocker_surface
+      - next_checkpoint
+    changed_relations:
+      - rel_goal_to_success
+      - rel_state_to_path
+      - rel_success_to_path
+      - rel_path_to_checkpoint
+      - rel_blocker_to_path

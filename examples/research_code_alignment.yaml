@@ -1,0 +1,108 @@
+title: Research Code Understanding Alignment
+mode: session
+intent: Align a user and agent on the current mental model of a mixed research and code repo before changing implementation.
+objects:
+  - id: repo_surface
+    kind: region
+    label: Repo Surface
+    summary: Files and artifacts the agent has inspected directly.
+    x: 60
+    y: 100
+    width: 380
+    height: 260
+  - id: agent_model
+    kind: node
+    label: Agent Mental Model
+    summary: Current hypothesis about system structure, evidence, and gaps.
+    x: 540
+    y: 120
+  - id: evidence_index
+    kind: evidence
+    label: Evidence Index
+    summary: File paths, line anchors, command outputs, and generated reports.
+    x: 100
+    y: 170
+  - id: change_surface
+    kind: boundary
+    label: Proposed Change Surface
+    summary: The modules the agent believes are safe to edit.
+    x: 840
+    y: 128
+  - id: user_review
+    kind: node
+    label: User Review
+    summary: Corrections arrive in chat by referencing stable IDs.
+    x: 540
+    y: 330
+  - id: gap_marker
+    kind: uncertainty
+    label: Uninspected Edge Cases
+    summary: Unknown behavior that may change the implementation scope.
+    x: 840
+    y: 330
+relations:
+  - id: rel_evidence_to_model
+    type: map
+    from: evidence_index
+    to: agent_model
+    label: grounds
+  - id: rel_model_to_change
+    type: depend
+    from: agent_model
+    to: change_surface
+    label: scopes
+  - id: rel_user_feedback
+    type: feedback
+    from: user_review
+    to: agent_model
+    label: corrects
+  - id: rel_gap_to_scope
+    type: conflict
+    from: gap_marker
+    to: change_surface
+    label: may widen
+  - id: rel_repo_contains_evidence
+    type: contain
+    from: repo_surface
+    to: evidence_index
+    label: contains
+space:
+  x_axis: Left is observed evidence; right is proposed action.
+  y_axis: Top is the agent claim; bottom is human correction and uncertainty.
+  containment: Regions indicate evidence or ownership domains, not task phases.
+  proximity: Nearby objects are assumed to be tightly coupled until corrected.
+focus:
+  primary_path:
+    - rel_evidence_to_model
+    - rel_model_to_change
+  key_boundaries:
+    - change_surface
+  unresolved:
+    - unc_edge_cases
+  accepted:
+    - agent_model
+    - evidence_index
+uncertainties:
+  - id: unc_edge_cases
+    target: gap_marker
+    question: Which uninspected files could invalidate the proposed change surface?
+    impact: A missed edge case would make implementation overconfident.
+    status: open
+revisions:
+  - id: rev_initial
+    date: "2026-06-08"
+    source: agent
+    note: Initial alignment map generated before implementation.
+    changed_objects:
+      - repo_surface
+      - agent_model
+      - evidence_index
+      - change_surface
+      - user_review
+      - gap_marker
+    changed_relations:
+      - rel_evidence_to_model
+      - rel_model_to_change
+      - rel_user_feedback
+      - rel_gap_to_scope
+      - rel_repo_contains_evidence

@@ -1,0 +1,111 @@
+title: Codex Plan Alignment Checkpoint
+mode: plan
+source:
+  agent: Codex
+  surface: plan mode
+  prompt: Visualize the current plan before implementation so the user can check scope and boundaries.
+intent: Align the user and agent on the proposed implementation plan, edit surface, risks, and validation gates before code changes start.
+objects:
+  - id: user_request
+    kind: evidence
+    label: User Request
+    summary: The latest user intent and constraints that the plan must satisfy.
+    x: 80
+    y: 160
+  - id: agent_plan
+    kind: node
+    label: Agent Plan
+    summary: Current implementation approach, sequencing, and assumptions.
+    x: 360
+    y: 150
+  - id: edit_surface
+    kind: boundary
+    label: Edit Surface
+    summary: Files and modules the agent expects to modify.
+    x: 660
+    y: 110
+  - id: excluded_scope
+    kind: boundary
+    label: Excluded Scope
+    summary: Work the agent should not do in this pass.
+    x: 660
+    y: 310
+  - id: validation_gate
+    kind: node
+    label: Validation Gate
+    summary: Tests, builds, audits, and review checks required before claiming completion.
+    x: 960
+    y: 150
+  - id: risk_marker
+    kind: uncertainty
+    label: Risk And Unknowns
+    summary: Ambiguities that could change the implementation plan.
+    x: 360
+    y: 360
+relations:
+  - id: rel_request_to_plan
+    type: map
+    from: user_request
+    to: agent_plan
+    label: grounds
+  - id: rel_plan_to_edits
+    type: depend
+    from: agent_plan
+    to: edit_surface
+    label: edits
+  - id: rel_plan_respects_scope
+    type: forbid
+    from: agent_plan
+    to: excluded_scope
+    label: must avoid
+  - id: rel_edits_to_validation
+    type: order
+    from: edit_surface
+    to: validation_gate
+    label: then verify
+  - id: rel_risk_to_plan
+    type: conflict
+    from: risk_marker
+    to: agent_plan
+    label: may revise
+space:
+  x_axis: Left is user intent; right is execution and verification.
+  y_axis: Top is intended work; bottom is excluded scope and uncertainty.
+  containment: Boundaries show what the agent believes is inside or outside this implementation pass.
+  proximity: Nearby objects are assumed to require review together.
+focus:
+  primary_path:
+    - rel_request_to_plan
+    - rel_plan_to_edits
+    - rel_edits_to_validation
+  key_boundaries:
+    - edit_surface
+    - excluded_scope
+  unresolved:
+    - unc_plan_scope
+  accepted:
+    - user_request
+uncertainties:
+  - id: unc_plan_scope
+    target: risk_marker
+    question: Which assumption, file boundary, or test gate would make this plan unsafe to implement as written?
+    impact: The agent may edit the wrong surface or claim completion without the right verification.
+    status: open
+revisions:
+  - id: rev_initial
+    date: "2026-06-09"
+    source: agent
+    note: Initial Codex plan alignment checkpoint.
+    changed_objects:
+      - user_request
+      - agent_plan
+      - edit_surface
+      - excluded_scope
+      - validation_gate
+      - risk_marker
+    changed_relations:
+      - rel_request_to_plan
+      - rel_plan_to_edits
+      - rel_plan_respects_scope
+      - rel_edits_to_validation
+      - rel_risk_to_plan

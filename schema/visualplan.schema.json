@@ -1,0 +1,325 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://visualplan.local/schema/visualplan.schema.json",
+  "title": "VisualPlan",
+  "description": "Visual alignment document for agent plans, goals, and understanding.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "title",
+    "intent",
+    "objects",
+    "relations",
+    "space",
+    "focus",
+    "uncertainties",
+    "revisions"
+  ],
+  "properties": {
+    "mode": {
+      "enum": [
+        "plan",
+        "goal",
+        "session",
+        "architecture",
+        "research",
+        "custom"
+      ]
+    },
+    "source": {
+      "$ref": "#/$defs/source"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "intent": {
+      "type": "string",
+      "minLength": 1
+    },
+    "objects": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/object"
+      }
+    },
+    "relations": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/relation"
+      }
+    },
+    "space": {
+      "$ref": "#/$defs/space"
+    },
+    "focus": {
+      "$ref": "#/$defs/focus"
+    },
+    "uncertainties": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/uncertainty"
+      }
+    },
+    "revisions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/revision"
+      }
+    }
+  },
+  "$defs": {
+    "stableId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]*$",
+      "minLength": 1
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "agent": {
+          "type": "string",
+          "minLength": 1
+        },
+        "surface": {
+          "type": "string",
+          "minLength": 1
+        },
+        "prompt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "goal": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "object": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "label",
+        "x",
+        "y"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/stableId"
+        },
+        "kind": {
+          "enum": [
+            "node",
+            "region",
+            "boundary",
+            "evidence",
+            "uncertainty"
+          ]
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "summary": {
+          "type": "string"
+        },
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        },
+        "width": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      }
+    },
+    "relation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "type",
+        "from",
+        "to"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/stableId"
+        },
+        "type": {
+          "enum": [
+            "flow",
+            "contain",
+            "depend",
+            "conflict",
+            "forbid",
+            "map",
+            "feedback",
+            "order"
+          ]
+        },
+        "from": {
+          "$ref": "#/$defs/stableId"
+        },
+        "to": {
+          "$ref": "#/$defs/stableId"
+        },
+        "label": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "evidence": {
+          "type": "string"
+        }
+      }
+    },
+    "space": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "x_axis",
+        "y_axis",
+        "containment",
+        "proximity"
+      ],
+      "properties": {
+        "x_axis": {
+          "type": "string",
+          "minLength": 1
+        },
+        "y_axis": {
+          "type": "string",
+          "minLength": 1
+        },
+        "containment": {
+          "type": "string",
+          "minLength": 1
+        },
+        "proximity": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "focus": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "primary_path",
+        "key_boundaries",
+        "unresolved",
+        "accepted"
+      ],
+      "properties": {
+        "primary_path": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/stableId"
+          }
+        },
+        "key_boundaries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/stableId"
+          }
+        },
+        "unresolved": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/stableId"
+          }
+        },
+        "accepted": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/stableId"
+          }
+        }
+      }
+    },
+    "uncertainty": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "target",
+        "question"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/stableId"
+        },
+        "target": {
+          "$ref": "#/$defs/stableId"
+        },
+        "question": {
+          "type": "string",
+          "minLength": 1
+        },
+        "impact": {
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "open",
+            "accepted",
+            "resolved"
+          ]
+        }
+      }
+    },
+    "revision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "date",
+        "source",
+        "note",
+        "changed_objects",
+        "changed_relations"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/stableId"
+        },
+        "date": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
+        },
+        "note": {
+          "type": "string",
+          "minLength": 1
+        },
+        "changed_objects": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/stableId"
+          }
+        },
+        "changed_relations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/stableId"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,99 @@
+title: Reject Linear Task Plan
+mode: plan
+intent: Show that a proposed task list is too linear because the real system needs alignment on structure first.
+objects:
+  - id: task_list
+    kind: node
+    label: Linear Task List
+    summary: A step-by-step plan that assumes the system shape is already known.
+    x: 90
+    y: 170
+  - id: system_structure
+    kind: region
+    label: System Structure
+    summary: Boundaries, dependencies, and uncertainty that must be aligned before execution.
+    x: 420
+    y: 90
+    width: 430
+    height: 320
+  - id: hidden_boundary
+    kind: boundary
+    label: Hidden Boundary
+    summary: Cross-module or cross-owner constraint missing from the task list.
+    x: 470
+    y: 170
+  - id: unresolved_area
+    kind: uncertainty
+    label: Unresolved Area
+    summary: User has not accepted the agent mental model yet.
+    x: 650
+    y: 280
+  - id: accepted_alignment
+    kind: node
+    label: Accepted Alignment
+    summary: A local artifact the user can correct by ID.
+    x: 930
+    y: 170
+relations:
+  - id: rel_task_forbidden
+    type: forbid
+    from: task_list
+    to: accepted_alignment
+    label: skip alignment
+  - id: rel_task_conflict_boundary
+    type: conflict
+    from: task_list
+    to: hidden_boundary
+    label: ignores
+  - id: rel_structure_contains_boundary
+    type: contain
+    from: system_structure
+    to: hidden_boundary
+    label: contains
+  - id: rel_structure_contains_unresolved
+    type: contain
+    from: system_structure
+    to: unresolved_area
+    label: contains
+  - id: rel_boundary_alignment
+    type: order
+    from: hidden_boundary
+    to: accepted_alignment
+    label: before execute
+space:
+  x_axis: Left is rejected execution-first thinking; right is accepted alignment-first workflow.
+  y_axis: Top is asserted structure; bottom is unresolved risk.
+  containment: The region marks system understanding, not a task board column.
+  proximity: The task list is near the boundary to show why it is unsafe.
+focus:
+  primary_path:
+    - rel_boundary_alignment
+  key_boundaries:
+    - hidden_boundary
+  unresolved:
+    - unc_too_linear
+  accepted:
+    - rel_task_forbidden
+uncertainties:
+  - id: unc_too_linear
+    target: unresolved_area
+    question: What system boundary must be aligned before the agent can safely execute tasks?
+    impact: Without this correction, implementation may solve the wrong problem.
+    status: open
+revisions:
+  - id: rev_initial
+    date: "2026-06-08"
+    source: agent
+    note: Initial rejection map showing why task-card planning is not enough.
+    changed_objects:
+      - task_list
+      - system_structure
+      - hidden_boundary
+      - unresolved_area
+      - accepted_alignment
+    changed_relations:
+      - rel_task_forbidden
+      - rel_task_conflict_boundary
+      - rel_structure_contains_boundary
+      - rel_structure_contains_unresolved
+      - rel_boundary_alignment

@@ -1,0 +1,51 @@
+{
+  "name": "visualplan",
+  "version": "0.1.0",
+  "description": "Visual alignment for agent plans, goals, and understanding.",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "agent",
+    "alignment",
+    "codex",
+    "diagram",
+    "plans",
+    "visualization"
+  ],
+  "bin": {
+    "visualplan": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "schema",
+    "examples",
+    "docs",
+    "eval",
+    ".agents/skills",
+    "README.md",
+    "LICENSE",
+    "CONTRIBUTING.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "review": "tsx src/cli.ts review",
+    "audit:moderate": "npm audit --audit-level=moderate",
+    "pack:dry-run": "npm pack --dry-run",
+    "render:example": "tsx src/cli.ts render examples/research_code_alignment.yaml --out-dir output/research_code_alignment",
+    "watch:example": "tsx src/cli.ts watch examples/research_code_alignment.yaml --out-dir output/research_code_alignment"
+  },
+  "dependencies": {
+    "yaml": "^2.7.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "ajv": "^8.17.1",
+    "tsx": "^4.19.0",
+    "typescript": "^5.8.0",
+    "vitest": "^4.1.8"
+  }
+}

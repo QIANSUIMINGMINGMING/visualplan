@@ -1,0 +1,110 @@
+title: Session Intent Alignment
+mode: session
+source:
+  agent: Codex
+  surface: ordinary conversation
+  prompt: Generate a VisualPlan so the user can review whether the agent understood the request.
+intent: Align user intent with the agent's current understanding before the agent commits to a direction.
+objects:
+  - id: latest_prompt
+    kind: evidence
+    label: Latest User Prompt
+    summary: The newest instruction that should override stale context.
+    x: 80
+    y: 140
+  - id: prior_context
+    kind: evidence
+    label: Prior Context
+    summary: Relevant conversation, repo facts, and constraints already gathered.
+    x: 80
+    y: 330
+  - id: agent_understanding
+    kind: node
+    label: Agent Understanding
+    summary: What the agent believes the user wants and why.
+    x: 400
+    y: 170
+  - id: interpretation_boundary
+    kind: boundary
+    label: Interpretation Boundary
+    summary: Where the agent is making assumptions rather than following explicit instructions.
+    x: 690
+    y: 120
+  - id: user_review
+    kind: node
+    label: User Review
+    summary: The user confirms, rejects, or corrects IDs before execution.
+    x: 990
+    y: 170
+  - id: ambiguity_marker
+    kind: uncertainty
+    label: Ambiguity Marker
+    summary: Open question that could change the correct response.
+    x: 690
+    y: 360
+relations:
+  - id: rel_prompt_to_understanding
+    type: map
+    from: latest_prompt
+    to: agent_understanding
+    label: primary signal
+  - id: rel_context_to_understanding
+    type: depend
+    from: prior_context
+    to: agent_understanding
+    label: informs
+  - id: rel_understanding_to_boundary
+    type: map
+    from: agent_understanding
+    to: interpretation_boundary
+    label: exposes assumptions
+  - id: rel_boundary_to_review
+    type: order
+    from: interpretation_boundary
+    to: user_review
+    label: needs approval
+  - id: rel_ambiguity_to_understanding
+    type: conflict
+    from: ambiguity_marker
+    to: agent_understanding
+    label: may change
+space:
+  x_axis: Left is user-provided evidence; right is agent interpretation and review.
+  y_axis: Top is the working interpretation; bottom is context and ambiguity.
+  containment: Boundaries show assumptions that require explicit review.
+  proximity: Nearby elements are assumed to interact in the agent's current understanding.
+focus:
+  primary_path:
+    - rel_prompt_to_understanding
+    - rel_understanding_to_boundary
+    - rel_boundary_to_review
+  key_boundaries:
+    - interpretation_boundary
+  unresolved:
+    - unc_intent_gap
+  accepted:
+    - latest_prompt
+uncertainties:
+  - id: unc_intent_gap
+    target: ambiguity_marker
+    question: Which part of the user's intent could the agent be over-reading or under-reading?
+    impact: The next answer or implementation may optimize for the wrong interpretation.
+    status: open
+revisions:
+  - id: rev_initial
+    date: "2026-06-09"
+    source: agent
+    note: Initial session intent alignment checkpoint.
+    changed_objects:
+      - latest_prompt
+      - prior_context
+      - agent_understanding
+      - interpretation_boundary
+      - user_review
+      - ambiguity_marker
+    changed_relations:
+      - rel_prompt_to_understanding
+      - rel_context_to_understanding
+      - rel_understanding_to_boundary
+      - rel_boundary_to_review
+      - rel_ambiguity_to_understanding

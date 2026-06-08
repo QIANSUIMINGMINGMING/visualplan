@@ -1,0 +1,106 @@
+title: Data Research Hypothesis Space
+mode: research
+intent: Align on a research hypothesis map before running expensive or misleading experiments.
+objects:
+  - id: raw_market_data
+    kind: evidence
+    label: Raw Market Data
+    summary: Daily prices, fundamentals, and derived proxy fields.
+    x: 80
+    y: 160
+  - id: curated_contract
+    kind: boundary
+    label: Curated Data Contract
+    summary: Validation-gated features the agent is allowed to treat as stable.
+    x: 320
+    y: 150
+  - id: market_state
+    kind: node
+    label: Market State Variable
+    summary: Regime or belief-state interpretation to validate first.
+    x: 560
+    y: 150
+  - id: alpha_claim
+    kind: node
+    label: Alpha Claim
+    summary: Predictive claim that should stay downstream of state validation.
+    x: 820
+    y: 150
+  - id: leakage_risk
+    kind: uncertainty
+    label: Leakage Risk
+    summary: Feature construction may accidentally include future information.
+    x: 560
+    y: 330
+  - id: baseline_model
+    kind: node
+    label: Baseline Model
+    summary: Simple historical simulation and explainable comparison target.
+    x: 820
+    y: 330
+relations:
+  - id: rel_raw_to_contract
+    type: map
+    from: raw_market_data
+    to: curated_contract
+    label: validates
+  - id: rel_contract_state
+    type: depend
+    from: curated_contract
+    to: market_state
+    label: feeds
+  - id: rel_state_alpha
+    type: order
+    from: market_state
+    to: alpha_claim
+    label: before
+  - id: rel_baseline_alpha
+    type: conflict
+    from: baseline_model
+    to: alpha_claim
+    label: must beat
+  - id: rel_leakage_contract
+    type: forbid
+    from: leakage_risk
+    to: curated_contract
+    label: invalidates
+space:
+  x_axis: Left-to-right moves from observed data to stronger research claims.
+  y_axis: Top is intended research path; bottom is falsification pressure.
+  containment: The data contract boundary marks what is safe to reuse across runs.
+  proximity: Objects near alpha_claim are not accepted unless baseline_model and leakage_risk are resolved.
+focus:
+  primary_path:
+    - rel_raw_to_contract
+    - rel_contract_state
+    - rel_state_alpha
+  key_boundaries:
+    - curated_contract
+  unresolved:
+    - unc_leakage
+  accepted:
+    - baseline_model
+uncertainties:
+  - id: unc_leakage
+    target: leakage_risk
+    question: Which features require look-ahead audits before any alpha claim is discussed?
+    impact: Leakage would make a promising result unusable.
+    status: open
+revisions:
+  - id: rev_initial
+    date: "2026-06-08"
+    source: agent
+    note: Initial research-space map created before running experiments.
+    changed_objects:
+      - raw_market_data
+      - curated_contract
+      - market_state
+      - alpha_claim
+      - leakage_risk
+      - baseline_model
+    changed_relations:
+      - rel_raw_to_contract
+      - rel_contract_state
+      - rel_state_alpha
+      - rel_baseline_alpha
+      - rel_leakage_contract

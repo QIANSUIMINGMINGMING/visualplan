@@ -1,0 +1,99 @@
+title: Feedback Loop System
+mode: architecture
+intent: Make a reinforcing or balancing loop visible before the agent treats it as a one-way pipeline.
+objects:
+  - id: user_behavior
+    kind: evidence
+    label: User Behavior
+    summary: Observed actions that drive ranking or scheduling.
+    x: 90
+    y: 150
+  - id: policy_model
+    kind: node
+    label: Policy Model
+    summary: Learns from observed behavior and chooses future exposure.
+    x: 360
+    y: 150
+  - id: exposure_surface
+    kind: node
+    label: Exposure Surface
+    summary: What the system shows next.
+    x: 640
+    y: 150
+  - id: behavior_shift
+    kind: node
+    label: Behavior Shift
+    summary: User response to changed exposure.
+    x: 640
+    y: 340
+  - id: missing_counterfactual
+    kind: uncertainty
+    label: Missing Counterfactual
+    summary: The system may not know what users would do under different exposure.
+    x: 360
+    y: 340
+relations:
+  - id: rel_behavior_policy
+    type: flow
+    from: user_behavior
+    to: policy_model
+    label: trains
+  - id: rel_policy_exposure
+    type: flow
+    from: policy_model
+    to: exposure_surface
+    label: selects
+  - id: rel_exposure_shift
+    type: flow
+    from: exposure_surface
+    to: behavior_shift
+    label: changes
+  - id: rel_shift_behavior
+    type: feedback
+    from: behavior_shift
+    to: user_behavior
+    label: feeds back
+  - id: rel_counterfactual_policy
+    type: conflict
+    from: missing_counterfactual
+    to: policy_model
+    label: biases
+space:
+  x_axis: Left-to-right is causal action within one cycle.
+  y_axis: Top is direct system path; bottom is delayed feedback and uncertainty.
+  containment: No object is a task phase; the loop is the main structure.
+  proximity: Nearby loop nodes indicate fast feedback, not implementation order.
+focus:
+  primary_path:
+    - rel_behavior_policy
+    - rel_policy_exposure
+    - rel_exposure_shift
+    - rel_shift_behavior
+  key_boundaries: []
+  unresolved:
+    - unc_counterfactual
+  accepted:
+    - rel_shift_behavior
+uncertainties:
+  - id: unc_counterfactual
+    target: missing_counterfactual
+    question: What evidence distinguishes real preference from exposure-induced behavior?
+    impact: Without this, the agent may propose a self-reinforcing optimization.
+    status: open
+revisions:
+  - id: rev_initial
+    date: "2026-06-08"
+    source: agent
+    note: Initial loop map generated to avoid linear pipeline framing.
+    changed_objects:
+      - user_behavior
+      - policy_model
+      - exposure_surface
+      - behavior_shift
+      - missing_counterfactual
+    changed_relations:
+      - rel_behavior_policy
+      - rel_policy_exposure
+      - rel_exposure_shift
+      - rel_shift_behavior
+      - rel_counterfactual_policy
