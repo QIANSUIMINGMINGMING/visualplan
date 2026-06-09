@@ -1,8 +1,8 @@
 # Rendering Specification
 
 The renderer is deterministic. The same `visualplan.yaml` should produce the
-same object positions, stable element IDs, relation labels, side-panel lists,
-and visible unresolved questions.
+same Markdown sections, SVG object positions, stable element IDs, relation
+labels, and visible unresolved questions.
 
 ## Outputs
 
@@ -15,12 +15,15 @@ visualplan render visualplan.yaml
 Default outputs next to the input file:
 
 ```text
-visualplan.html
+visualplan.md
 visualplan.svg
 ```
 
-`visualplan.html` embeds the SVG inline and adds a side panel. `visualplan.svg`
-is the standalone diagram.
+`visualplan.md` is the primary review artifact. It embeds and links the SVG,
+then lists alignment mode, source metadata, intent, spatial semantics, focus
+lists, objects, relations, uncertainties, and revisions by stable ID.
+
+`visualplan.svg` is the standalone visual map.
 
 ## Stable Rendered IDs
 
@@ -38,9 +41,9 @@ data-id="relation:<id>"
 
 These attributes are part of the user-agent correction contract.
 
-## Side Panel
+## Markdown Review Index
 
-The HTML side panel shows:
+The Markdown file shows:
 
 - Alignment mode and source metadata when present.
 - Intent.
@@ -51,8 +54,8 @@ The HTML side panel shows:
 - Unresolved questions.
 - Revision history.
 
-The panel is not a secondary documentation page. It is the user-addressable
-index for chat corrections.
+Agents should show the absolute Markdown path first because it is the artifact
+users can Cmd-click from VSCode, Cursor, or another IDE terminal.
 
 ## Visual Conventions
 
@@ -60,11 +63,11 @@ index for chat corrections.
 |---|---|
 | `region` | Large light-gray dashed container. |
 | `boundary` | Orange dashed object. |
-| `uncertainty` | Amber dashed object and side-panel question. |
+| `uncertainty` | Amber dashed object and Markdown question. |
 | `conflict` | Red dashed relation. |
 | `forbid` | Dark-red dashed relation. |
 | Focused object or relation | Thicker stroke. |
-| Accepted focus | Listed in the focus panel. |
+| Accepted focus | Listed in the focus section. |
 
 The renderer intentionally avoids freeform drawing semantics. Its job is to
 make typed system understanding visible, not to emulate a whiteboard.
@@ -72,22 +75,7 @@ make typed system understanding visible, not to emulate a whiteboard.
 ## Watch Mode
 
 `visualplan watch <file>` renders immediately, watches the YAML file, and
-re-renders on changes. Watch-mode HTML includes a short auto-refresh hook so a
-browser or file-portal preview updates without restarting the CLI.
-
-## Review Server
-
-`visualplan review <source>` renders or stages the current artifact under
-`.visualplan/review/current` and starts a local Node server. The server exposes
-only explicit review routes:
-
-- `/` for current HTML.
-- `/visualplan.svg` for current SVG when present.
-- `/api/current` for metadata JSON.
-- `/list` for staged current/history outputs.
-
-The review server does not depend on systemd, Caddy, private relay hosts, or
-machine-specific paths.
+re-renders Markdown/SVG on changes.
 
 ## Deferred Rendering Features
 
@@ -97,5 +85,3 @@ machine-specific paths.
 - Constraint overlays from extracted code.
 - Multi-file diagram composition.
 - MCP transport.
-
-These are future extensions, not phase-1 requirements.

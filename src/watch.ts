@@ -23,9 +23,8 @@ async function renderOnce(inputPath: string, options: WatchOptions): Promise<Out
   }
   const output = await renderToFiles(inputPath, loaded.plan, {
     ...options,
-    watchMode: true,
   });
-  options.logger?.(`rendered ${output.htmlPath} and ${output.svgPath}`);
+  options.logger?.(`rendered ${output.primaryPath} and ${output.svgPath}`);
   return output;
 }
 

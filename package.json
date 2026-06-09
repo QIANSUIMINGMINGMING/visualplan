@@ -30,9 +30,8 @@
     "CONTRIBUTING.md"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\" && tsc -p tsconfig.json && node -e \"require('node:fs').chmodSync('dist/cli.js', 0o755)\"",
     "test": "vitest run",
-    "review": "tsx src/cli.ts review",
     "audit:moderate": "npm audit --audit-level=moderate",
     "pack:dry-run": "npm pack --dry-run",
     "render:example": "tsx src/cli.ts render examples/research_code_alignment.yaml --out-dir output/research_code_alignment",

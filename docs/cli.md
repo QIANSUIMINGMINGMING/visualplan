@@ -1,8 +1,8 @@
 # CLI Specification
 
 VisualPlan is a Node.js CLI. It reads `visualplan.yaml`, validates the
-structured grammar, writes deterministic HTML/SVG, and can serve a local review
-URL for user-agent alignment.
+structured grammar, and writes deterministic Markdown/SVG artifacts for
+user-agent alignment.
 
 ## Commands
 
@@ -35,41 +35,23 @@ Validates required fields, stable IDs, references, focus lists, optional
 ### Render
 
 ```bash
-visualplan render <file> [--out-dir <dir>] [--html <file>] [--svg <file>] [--json]
+visualplan render <file> [--out-dir <dir>] [--md <file>] [--svg <file>] [--json]
 ```
 
-Writes `visualplan.html` and `visualplan.svg`. Rendered objects and relations
-preserve stable `data-id` attributes for chat corrections.
+Writes `visualplan.md` and `visualplan.svg` by default. Rendered objects and
+relations preserve stable IDs in both the Markdown review text and SVG
+`data-id` attributes.
+
+Human output prints the absolute Markdown path first so it can be Cmd-clicked
+from an IDE terminal.
 
 ### Watch
 
 ```bash
-visualplan watch <file> [--out-dir <dir>] [--port <port>] [--host <host>] [--json]
+visualplan watch <file> [--out-dir <dir>] [--md <file>] [--svg <file>] [--json]
 ```
 
-Renders once, watches the YAML file, and re-renders on edits. If `--port` is
-provided, it also serves the current output with the same local review server.
-
-### Review
-
-```bash
-visualplan review <file-or-output-dir-or-html> [--port 8502] [--host 127.0.0.1] [--out-dir .visualplan/review] [--no-server] [--json]
-```
-
-If the source is YAML, VisualPlan validates and renders it into
-`.visualplan/review/current`. If the source is a rendered output directory or
-HTML file, VisualPlan stages it into the same current directory. The command
-then starts a local server.
-
-Use `--no-server` when a persistent review service is already running and the
-command should only update the shared `current` review directory.
-
-Routes:
-
-- `/`: current review HTML.
-- `/api/current`: current review metadata JSON.
-- `/list`: previous/current staged reviews.
-- `/outputs/<id>/visualplan.html`: specific staged review output.
+Renders once, watches the YAML file, and re-renders Markdown/SVG on edits.
 
 ## JSON Contract
 
@@ -81,15 +63,18 @@ Successful command output includes these stable fields:
   "command": "render",
   "mode": "plan",
   "inputPath": "/abs/path/visualplan.yaml",
-  "htmlPath": "/abs/path/visualplan.html",
+  "primaryPath": "/abs/path/visualplan.md",
+  "markdownPath": "/abs/path/visualplan.md",
   "svgPath": "/abs/path/visualplan.svg",
-  "localUrl": null,
   "objectIds": ["agent_plan"],
   "relationIds": ["rel_plan_to_edits"],
   "uncertaintyIds": ["unc_plan_scope"],
   "warnings": []
 }
 ```
+
+`primaryPath` is the artifact agents should show first to the user. For the
+current renderer it is the same as `markdownPath`.
 
 Failures use:
 
@@ -106,6 +91,11 @@ Failures use:
 
 Additional command-specific fields may be present. For example, `scenarios
 --json` includes a `scenarios` array.
+
+## Removed Browser Review Command
+
+`visualplan review` and HTML output are not part of the supported CLI surface.
+Use `visualplan render` and open the absolute `primaryPath` in the IDE.
 
 ## Scenario Modes
 

@@ -38,7 +38,7 @@ describe("visualplan watch and init", () => {
     }
   });
 
-  it("re-renders generated HTML after YAML changes", async () => {
+  it("re-renders generated Markdown after YAML changes", async () => {
     const tempDir = mkdtempSync(resolve(tmpdir(), "visualplan-watch-"));
     const inputPath = resolve(tempDir, "visualplan.yaml");
     const fixture = readFileSync(resolve(root, "examples/research_code_alignment.yaml"), "utf8");
@@ -53,8 +53,8 @@ describe("visualplan watch and init", () => {
     try {
       const output = watcher.lastOutput();
       expect(output).toBeDefined();
-      expect(readFileSync(output!.htmlPath, "utf8")).toContain("Research Code Understanding Alignment");
-      expect(readFileSync(output!.htmlPath, "utf8")).toContain("window.location.reload()");
+      expect(readFileSync(output!.markdownPath, "utf8")).toContain("Research Code Understanding Alignment");
+      expect(readFileSync(output!.markdownPath, "utf8")).toContain("![VisualPlan diagram](./visualplan.svg)");
 
       writeFileSync(
         inputPath,
@@ -63,8 +63,8 @@ describe("visualplan watch and init", () => {
       );
 
       await waitFor(() => {
-        const html = readFileSync(output!.htmlPath, "utf8");
-        expect(html).toContain("Updated Alignment Map");
+        const markdown = readFileSync(output!.markdownPath, "utf8");
+        expect(markdown).toContain("Updated Alignment Map");
       });
     } finally {
       watcher.close();

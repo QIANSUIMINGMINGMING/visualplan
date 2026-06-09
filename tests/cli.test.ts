@@ -1,6 +1,6 @@
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { resolve } from "node:path";
+import { isAbsolute, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { runCli } from "../src/cli.js";
@@ -84,7 +84,7 @@ describe("visualplan CLI JSON contract", () => {
     }
   });
 
-  it("renders with JSON output and writes HTML/SVG", async () => {
+  it("renders with JSON output and writes Markdown/SVG", async () => {
     const tempDir = mkdtempSync(resolve(tmpdir(), "visualplan-cli-render-"));
     try {
       const result = await run([
@@ -100,12 +100,45 @@ describe("visualplan CLI JSON contract", () => {
       expect(parsed.ok).toBe(true);
       expect(parsed.command).toBe("render");
       expect(parsed.mode).toBe("plan");
-      expect(existsSync(parsed.htmlPath)).toBe(true);
+      expect(parsed.primaryPath).toBe(parsed.markdownPath);
+      expect(isAbsolute(parsed.markdownPath)).toBe(true);
+      expect(isAbsolute(parsed.svgPath)).toBe(true);
+      expect(existsSync(parsed.markdownPath)).toBe(true);
       expect(existsSync(parsed.svgPath)).toBe(true);
-      expect(readFileSync(parsed.htmlPath, "utf8")).toContain("Codex Plan Alignment Checkpoint");
+      expect(readFileSync(parsed.markdownPath, "utf8")).toContain("Codex Plan Alignment Checkpoint");
+      expect(readFileSync(parsed.markdownPath, "utf8")).toContain("![VisualPlan diagram](./visualplan.svg)");
     } finally {
       rmSync(tempDir, { recursive: true, force: true });
     }
+  });
+
+  it("prints an absolute Markdown path first for IDE terminals", async () => {
+    const tempDir = mkdtempSync(resolve(tmpdir(), "visualplan-cli-human-"));
+    try {
+      const result = await run([
+        "render",
+        resolve(root, "examples/codex_plan_checkpoint.yaml"),
+        "--out-dir",
+        tempDir,
+      ]);
+      const firstLine = result.stdout.split("\n")[0];
+
+      expect(result.exitCode).toBe(0);
+      expect(firstLine).toBe(resolve(tempDir, "visualplan.md"));
+      expect(existsSync(firstLine)).toBe(true);
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects removed browser review command", async () => {
+    const result = await run(["review", "examples/codex_plan_checkpoint.yaml", "--json"]);
+    const parsed = JSON.parse(result.stdout);
+
+    expect(result.exitCode).toBe(1);
+    expect(parsed.ok).toBe(false);
+    expect(parsed.command).toBe("review");
+    expect(parsed.errors[0].message).toContain("unknown command 'review'");
   });
 
   it("lists goal scenarios as JSON", async () => {

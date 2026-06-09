@@ -20,6 +20,9 @@ describe("visualplan Codex skill and alignment examples", () => {
     expect(text).toMatch(/align the current goal/i);
     expect(text).toMatch(/review whether the agent understood/i);
     expect(text).toMatch(/alignment checkpoint/i);
+    expect(text).toMatch(/visualplan render/i);
+    expect(text).toMatch(/primaryPath/i);
+    expect(text).not.toMatch(/visualplan review/i);
   });
 
   it("provides plan, goal, and session examples with stable IDs", () => {

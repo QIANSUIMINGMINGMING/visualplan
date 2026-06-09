@@ -25,11 +25,13 @@ describe("npm package surface", () => {
       encoding: "utf8",
     });
     expect(result.status, result.stderr).toBe(0);
-    const packed = JSON.parse(result.stdout)[0] as { files: Array<{ path: string }> };
+    const packed = JSON.parse(result.stdout)[0] as { files: Array<{ path: string; mode: number }> };
     const paths = packed.files.map((file) => file.path);
+    const cliFile = packed.files.find((file) => file.path === "dist/cli.js");
 
     expect(paths).toContain("dist/cli.js");
-    expect(paths).toContain("dist/review.js");
+    expect(cliFile?.mode).toBe(0o755);
+    expect(paths).not.toContain("dist/review.js");
     expect(paths).toContain("schema/visualplan.schema.json");
     expect(paths).toContain("examples/codex_goal_checkpoint.yaml");
     expect(paths).toContain(".agents/skills/visualplan-alignment/SKILL.md");

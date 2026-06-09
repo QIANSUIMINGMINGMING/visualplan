@@ -1,5 +1,5 @@
 import { mkdir, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { dirname, join, relative, resolve } from "node:path";
 import type {
   OutputPaths,
   RenderOptions,
@@ -15,14 +15,9 @@ interface SizedObject extends VisualObject {
   height: number;
 }
 
-interface RenderedFiles {
-  htmlPath: string;
-  svgPath: string;
-}
-
 export interface RenderToFilesOptions extends RenderOptions {
   outDir?: string;
-  htmlPath?: string;
+  markdownPath?: string;
   svgPath?: string;
 }
 
@@ -291,13 +286,36 @@ export function renderSvg(plan: VisualPlan, options: RenderOptions = {}): string
   ].join("");
 }
 
-function idBadge(id: string): string {
-  return `<code>${escapeHtml(id)}</code>`;
+function escapeMarkdown(value: string): string {
+  return value
+    .replaceAll("\\", "\\\\")
+    .replaceAll("`", "\\`")
+    .replaceAll("*", "\\*")
+    .replaceAll("_", "\\_")
+    .replaceAll("[", "\\[")
+    .replaceAll("]", "\\]")
+    .replaceAll("<", "\\<")
+    .replaceAll(">", "\\>")
+    .replaceAll("|", "\\|");
 }
 
-function renderSource(source: VisualPlan["source"]): string {
+function bullet(value: string): string {
+  return value ? escapeMarkdown(value) : "none";
+}
+
+function listIds(ids: string[]): string {
+  return ids.length > 0 ? ids.map((id) => `\`${id}\``).join(", ") : "none";
+}
+
+function markdownLinkPath(fromMarkdownPath: string, toPath: string): string {
+  const relativePath = relative(dirname(fromMarkdownPath), toPath).replaceAll("\\", "/");
+  const normalized = relativePath.startsWith(".") ? relativePath : `./${relativePath}`;
+  return encodeURI(normalized);
+}
+
+function renderMarkdownSource(source: VisualPlan["source"]): string[] {
   if (!source) {
-    return "";
+    return [];
   }
   const rows = [
     ["agent", source.agent],
@@ -307,97 +325,115 @@ function renderSource(source: VisualPlan["source"]): string {
   ].filter((row): row is [string, string] => Boolean(row[1]));
 
   if (rows.length === 0) {
-    return "";
+    return [];
   }
 
   return rows
-    .map(([key, value]) => `<dt>${escapeHtml(key)}</dt><dd>${escapeHtml(value)}</dd>`)
-    .join("");
+    .map(([key, value]) => `- ${key}: ${bullet(value)}`);
 }
 
-function renderSidePanel(plan: VisualPlan): string {
-  const objectItems = plan.objects
-    .map((object) => `<li>${idBadge(object.id)} <strong>${escapeHtml(object.label)}</strong><span>${escapeHtml(object.kind)}</span></li>`)
-    .join("");
-  const relationItems = plan.relations
-    .map((relation) => {
-      const label = relation.label ? ` - ${relation.label}` : "";
-      return `<li>${idBadge(relation.id)} <strong>${escapeHtml(relation.from)} ${escapeHtml(relation.type)} ${escapeHtml(relation.to)}</strong><span>${escapeHtml(label)}</span></li>`;
-    })
-    .join("");
-  const uncertaintyItems = plan.uncertainties
-    .map((uncertainty) => `<li>${idBadge(uncertainty.id)} <strong>${escapeHtml(uncertainty.target)}</strong><span>${escapeHtml(uncertainty.question)}</span></li>`)
-    .join("");
-  const revisionItems = plan.revisions
-    .map((revision) => `<li>${idBadge(revision.id)} <strong>${escapeHtml(revision.date)} ${escapeHtml(revision.source)}</strong><span>${escapeHtml(revision.note)}</span></li>`)
-    .join("");
+export function renderMarkdown(
+  plan: VisualPlan,
+  markdownPath: string,
+  svgPath: string,
+  options: RenderOptions = {},
+): string {
+  const svgLink = markdownLinkPath(markdownPath, svgPath);
+  const sourceLines = renderMarkdownSource(plan.source);
+  const generatedAt = options.generatedAt?.toISOString() ?? new Date(0).toISOString();
 
   return [
-    `<aside class="side-panel">`,
-    `<section><h2>Alignment</h2><p>Mode: ${idBadge(plan.mode ?? "custom")}</p>${renderSource(plan.source) ? `<dl>${renderSource(plan.source)}</dl>` : ""}</section>`,
-    `<section><h2>Intent</h2><p>${escapeHtml(plan.intent)}</p></section>`,
-    `<section><h2>Space</h2><dl><dt>x axis</dt><dd>${escapeHtml(plan.space.x_axis)}</dd><dt>y axis</dt><dd>${escapeHtml(plan.space.y_axis)}</dd><dt>containment</dt><dd>${escapeHtml(plan.space.containment)}</dd><dt>proximity</dt><dd>${escapeHtml(plan.space.proximity)}</dd></dl></section>`,
-    `<section><h2>Focus</h2><p>Primary path: ${plan.focus.primary_path.map(idBadge).join(" ") || "none"}</p><p>Boundaries: ${plan.focus.key_boundaries.map(idBadge).join(" ") || "none"}</p><p>Unresolved: ${plan.focus.unresolved.map(idBadge).join(" ") || "none"}</p></section>`,
-    `<section><h2>Objects</h2><ul>${objectItems}</ul></section>`,
-    `<section><h2>Relations</h2><ul>${relationItems}</ul></section>`,
-    `<section><h2>Unresolved Questions</h2><ul>${uncertaintyItems}</ul></section>`,
-    `<section><h2>Revision History</h2><ul>${revisionItems}</ul></section>`,
-    `</aside>`,
-  ].join("");
-}
-
-function watchRefreshScript(enabled: boolean): string {
-  if (!enabled) {
-    return "";
-  }
-  return [
-    "<script>",
-    "setTimeout(() => { window.location.reload(); }, 1500);",
-    "</script>",
-  ].join("");
-}
-
-export function renderHtml(plan: VisualPlan, svg: string, options: RenderOptions = {}): string {
-  return [
-    "<!doctype html>",
-    `<html lang="en">`,
-    "<head>",
-    `<meta charset="utf-8" />`,
-    `<meta name="viewport" content="width=device-width, initial-scale=1" />`,
-    `<title>${escapeHtml(plan.title)} - VisualPlan</title>`,
-    "<style>",
-    `:root { color-scheme: light; --text: #101828; --muted: #667085; --border: #d0d5dd; --surface: #ffffff; --band: #f8fafc; }`,
-    `* { box-sizing: border-box; }`,
-    `body { margin: 0; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: var(--text); background: #eaecf0; }`,
-    `.layout { display: grid; grid-template-columns: minmax(0, 1fr) 380px; min-height: 100vh; }`,
-    `.canvas { overflow: auto; padding: 20px; background: #f2f4f7; }`,
-    `.canvas svg { display: block; min-width: 900px; max-width: none; background: #fbfbfc; border: 1px solid var(--border); }`,
-    `.side-panel { background: var(--surface); border-left: 1px solid var(--border); padding: 18px; overflow: auto; max-height: 100vh; }`,
-    `section { border-bottom: 1px solid #eaecf0; padding: 0 0 14px; margin: 0 0 14px; }`,
-    `h2 { font-size: 13px; margin: 0 0 9px; text-transform: uppercase; color: #344054; letter-spacing: 0; }`,
-    `p, dd, li { font-size: 13px; line-height: 1.45; color: #344054; }`,
-    `dl { margin: 0; } dt { margin-top: 8px; font-size: 11px; color: var(--muted); text-transform: uppercase; } dd { margin: 2px 0 0; }`,
-    `ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; } li { display: grid; gap: 2px; } li span { color: var(--muted); }`,
-    `code { display: inline-block; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11px; color: #175cd3; background: #eff8ff; border: 1px solid #b2ddff; border-radius: 4px; padding: 1px 5px; }`,
-    `@media (max-width: 980px) { .layout { grid-template-columns: 1fr; } .side-panel { max-height: none; border-left: 0; border-top: 1px solid var(--border); } }`,
-    "</style>",
-    "</head>",
-    "<body>",
-    `<main class="layout">`,
-    `<section class="canvas" aria-label="VisualPlan canvas">${svg}</section>`,
-    renderSidePanel(plan),
-    "</main>",
-    watchRefreshScript(Boolean(options.watchMode)),
-    "</body>",
-    "</html>",
-  ].join("");
+    `# ${escapeMarkdown(plan.title)}`,
+    "",
+    `![VisualPlan diagram](${svgLink})`,
+    "",
+    `[Open SVG](${svgLink})`,
+    "",
+    "## Alignment",
+    "",
+    `- Mode: \`${plan.mode ?? "custom"}\``,
+    ...sourceLines,
+    "",
+    "## Intent",
+    "",
+    bullet(plan.intent),
+    "",
+    "## Space",
+    "",
+    `- X axis: ${bullet(plan.space.x_axis)}`,
+    `- Y axis: ${bullet(plan.space.y_axis)}`,
+    `- Containment: ${bullet(plan.space.containment)}`,
+    `- Proximity: ${bullet(plan.space.proximity)}`,
+    "",
+    "## Focus",
+    "",
+    `- Primary path: ${listIds(plan.focus.primary_path)}`,
+    `- Key boundaries: ${listIds(plan.focus.key_boundaries)}`,
+    `- Unresolved: ${listIds(plan.focus.unresolved)}`,
+    `- Accepted: ${listIds(plan.focus.accepted)}`,
+    "",
+    "## Objects",
+    "",
+    ...plan.objects.map((object) => [
+      `### \`${object.id}\` ${escapeMarkdown(object.label)}`,
+      "",
+      `- Kind: \`${object.kind}\``,
+      `- Summary: ${bullet(object.summary ?? "")}`,
+      `- Position: x=${object.x}, y=${object.y}`,
+      "",
+    ].join("\n")),
+    "## Relations",
+    "",
+    ...plan.relations.map((relation) => [
+      `### \`${relation.id}\``,
+      "",
+      `- Type: \`${relation.type}\``,
+      `- From: \`${relation.from}\``,
+      `- To: \`${relation.to}\``,
+      `- Label: ${bullet(relation.label ?? "")}`,
+      `- Summary: ${bullet(relation.summary ?? "")}`,
+      `- Evidence: ${bullet(relation.evidence ?? "")}`,
+      "",
+    ].join("\n")),
+    "## Uncertainties",
+    "",
+    ...plan.uncertainties.map((uncertainty) => [
+      `### \`${uncertainty.id}\``,
+      "",
+      `- Target: \`${uncertainty.target}\``,
+      `- Question: ${bullet(uncertainty.question)}`,
+      `- Impact: ${bullet(uncertainty.impact ?? "")}`,
+      `- Status: \`${uncertainty.status ?? "open"}\``,
+      "",
+    ].join("\n")),
+    "## Revisions",
+    "",
+    ...plan.revisions.map((revision) => [
+      `### \`${revision.id}\``,
+      "",
+      `- Date: ${bullet(revision.date)}`,
+      `- Source: ${bullet(revision.source)}`,
+      `- Note: ${bullet(revision.note)}`,
+      `- Changed objects: ${listIds(revision.changed_objects)}`,
+      `- Changed relations: ${listIds(revision.changed_relations)}`,
+      "",
+    ].join("\n")),
+    "<!--",
+    `Generated by VisualPlan at ${generatedAt}.`,
+    "Correct the alignment by referring to object, relation, and uncertainty IDs.",
+    "-->",
+    "",
+  ].join("\n");
 }
 
 export function outputPathsFor(inputPath: string, options: RenderToFilesOptions = {}): OutputPaths {
-  const baseDir = options.outDir ?? dirname(inputPath);
+  const baseDir = resolve(options.outDir ?? dirname(resolve(inputPath)));
+  const markdownPath = resolve(options.markdownPath ?? join(baseDir, "visualplan.md"));
+  const svgPath = resolve(options.svgPath ?? join(baseDir, "visualplan.svg"));
   return {
-    htmlPath: options.htmlPath ?? join(baseDir, "visualplan.html"),
-    svgPath: options.svgPath ?? join(baseDir, "visualplan.svg"),
+    primaryPath: markdownPath,
+    markdownPath,
+    svgPath,
   };
 }
 
@@ -405,13 +441,13 @@ export async function renderToFiles(
   inputPath: string,
   plan: VisualPlan,
   options: RenderToFilesOptions = {},
-): Promise<RenderedFiles> {
+): Promise<OutputPaths> {
   const paths = outputPathsFor(inputPath, options);
-  await mkdir(dirname(paths.htmlPath), { recursive: true });
+  await mkdir(dirname(paths.markdownPath), { recursive: true });
   await mkdir(dirname(paths.svgPath), { recursive: true });
   const svg = renderSvg(plan, options);
-  const html = renderHtml(plan, svg, options);
+  const markdown = renderMarkdown(plan, paths.markdownPath, paths.svgPath, options);
   await writeFile(paths.svgPath, svg, "utf8");
-  await writeFile(paths.htmlPath, html, "utf8");
+  await writeFile(paths.markdownPath, markdown, "utf8");
   return paths;
 }

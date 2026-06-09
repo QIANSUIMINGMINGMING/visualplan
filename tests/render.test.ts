@@ -1,10 +1,10 @@
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { resolve } from "node:path";
+import { isAbsolute, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse } from "yaml";
 import { describe, expect, it } from "vitest";
-import { renderHtml, renderSvg, renderToFiles } from "../src/render.js";
+import { renderMarkdown, renderSvg, renderToFiles } from "../src/render.js";
 import type { VisualPlan } from "../src/types.js";
 
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
@@ -24,15 +24,14 @@ describe("visualplan renderer", () => {
     expect(svg).toContain("Visual conventions");
   });
 
-  it("renders side-panel lists and unresolved questions in HTML", () => {
+  it("renders review details and unresolved questions in Markdown", () => {
     const plan = loadFixture();
-    const svg = renderSvg(plan);
-    const html = renderHtml(plan, svg);
+    const markdown = renderMarkdown(plan, "/tmp/visualplan.md", "/tmp/visualplan.svg");
 
-    expect(html).toContain("Unresolved Questions");
-    expect(html).toContain("unc_edge_cases");
-    expect(html).toContain("rel_gap_to_scope");
-    expect(html).not.toContain("window.location.reload()");
+    expect(markdown).toContain("## Uncertainties");
+    expect(markdown).toContain("`unc_edge_cases`");
+    expect(markdown).toContain("`rel_gap_to_scope`");
+    expect(markdown).toContain("![VisualPlan diagram](./visualplan.svg)");
   });
 
   it("writes default output filenames", async () => {
@@ -42,9 +41,12 @@ describe("visualplan renderer", () => {
       const inputPath = resolve(tempDir, "visualplan.yaml");
       const output = await renderToFiles(inputPath, plan, { outDir: tempDir });
 
-      expect(output.htmlPath.endsWith("visualplan.html")).toBe(true);
+      expect(output.primaryPath).toBe(output.markdownPath);
+      expect(isAbsolute(output.markdownPath)).toBe(true);
+      expect(isAbsolute(output.svgPath)).toBe(true);
+      expect(output.markdownPath.endsWith("visualplan.md")).toBe(true);
       expect(output.svgPath.endsWith("visualplan.svg")).toBe(true);
-      expect(readFileSync(output.htmlPath, "utf8")).toContain("Research Code Understanding Alignment");
+      expect(readFileSync(output.markdownPath, "utf8")).toContain("Research Code Understanding Alignment");
       expect(readFileSync(output.svgPath, "utf8")).toContain('data-id="object:agent_model"');
     } finally {
       rmSync(tempDir, { recursive: true, force: true });

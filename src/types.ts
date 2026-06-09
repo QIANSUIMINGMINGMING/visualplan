@@ -114,11 +114,11 @@ export interface ValidationResult {
 }
 
 export interface RenderOptions {
-  watchMode?: boolean;
   generatedAt?: Date;
 }
 
 export interface OutputPaths {
-  htmlPath: string;
+  primaryPath: string;
+  markdownPath: string;
   svgPath: string;
 }

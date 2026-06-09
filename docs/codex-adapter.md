@@ -6,9 +6,9 @@ The first adapter is a repository skill:
 .agents/skills/visualplan-alignment/SKILL.md
 ```
 
-Codex should use it when a user asks for a VisualPlan, an alignment checkpoint,
-a visualized plan, goal alignment, or a review of whether the agent understood
-the request.
+Codex should use it when a user explicitly asks for a VisualPlan, an alignment
+checkpoint, a visualized plan, goal alignment, or a review of whether the agent
+understood the request.
 
 ## Natural User Prompts
 
@@ -34,9 +34,23 @@ or expose it before creating a goal-mode artifact.
 
 1. Create `visualplan.yaml`.
 2. Run `visualplan validate visualplan.yaml --json`.
-3. Run `visualplan review visualplan.yaml --json`.
-4. Return the review URL and stable IDs.
+3. Run `visualplan render visualplan.yaml --out-dir .visualplan/render --json`.
+4. Return the absolute `primaryPath`, `svgPath`, and stable IDs.
 5. Stop before implementation until the user approves or corrects the artifact.
 
 The adapter does not intercept Codex built-in `/plan` or `/goal`. It is a
 normal skill workflow that uses the stable VisualPlan CLI.
+
+## Cross-Project Issue Loop
+
+When VisualPlan is used inside an arbitrary project and the experience reveals a
+VisualPlan bug, confusing default, missing mode, or feature request, the agent
+may create an issue against:
+
+```text
+https://github.com/QIANSUIMINGMINGMING/visualplan/issues
+```
+
+Those issues should be fixed later from a Codex session opened in the
+VisualPlan repository, not by starting a Codex session in every project where
+VisualPlan was used.

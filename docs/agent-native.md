@@ -30,21 +30,18 @@ whiteboard replacement.
    visualplan validate visualplan.yaml --json
    ```
 
-5. Start review:
+5. Render Markdown/SVG:
 
    ```bash
-visualplan review visualplan.yaml --json
-```
+   visualplan render visualplan.yaml --out-dir .visualplan/render --json
+   ```
 
-If a persistent VisualPlan review service is already running, update it without
-binding a new port:
-
-```bash
-visualplan review visualplan.yaml --out-dir ~/.local/share/visualplan/review --no-server --json
-```
-
-6. Return the local URL, key object/relation/uncertainty IDs, and any warnings.
+6. Return `primaryPath`, `svgPath`, key object/relation/uncertainty IDs, and
+   any warnings.
 7. Stop before implementation until the user approves or corrects the artifact.
+
+The `primaryPath` should be an absolute path to `visualplan.md`. Users can
+Cmd-click that path from an IDE terminal to inspect the artifact in the IDE.
 
 ## Good Artifacts
 
@@ -60,14 +57,21 @@ Good VisualPlan artifacts show:
 Bad artifacts are only linear TODO lists, unaddressable prose summaries, or
 decorative diagrams without stable IDs.
 
-## JSON Contract
+## JSON Contract For Agents
 
-Agents should prefer `--json` and parse `ok`, `localUrl`, `objectIds`,
-`relationIds`, `uncertaintyIds`, and `warnings`. On failure, report `errors`
-with their `path` and `message`, then fix the YAML before asking for review.
+Agents should prefer `--json` and parse `ok`, `primaryPath`, `markdownPath`,
+`svgPath`, `objectIds`, `relationIds`, `uncertaintyIds`, and `warnings`. On
+failure, report `errors` with their `path` and `message`, then fix the YAML
+before asking for review.
 
-## Optional Relay
+## Feedback From Arbitrary Projects
 
-VisualPlan only starts a local Node server by default. Teams may add their own
-Caddy, SSH tunnel, or relay process around `http://127.0.0.1:8502/`, but the
-package does not include private deployment defaults.
+VisualPlan can be used while working in any project. If that real use exposes a
+VisualPlan bug or missing feature, create an issue against:
+
+```text
+https://github.com/QIANSUIMINGMINGMING/visualplan/issues
+```
+
+Later, fix those issues from a Codex session opened in the VisualPlan repository
+itself.

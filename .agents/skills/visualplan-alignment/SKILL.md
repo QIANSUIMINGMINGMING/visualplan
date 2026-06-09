@@ -1,13 +1,16 @@
 ---
 name: visualplan-alignment
-description: Use when the user asks to visualize the current plan with VisualPlan, align the current goal, review whether the agent understood the request, create an alignment checkpoint, or use VisualPlan for plan/goal/session context before implementation.
+description: Explicit-only VisualPlan alignment workflow. Use only when the user explicitly invokes $visualplan-alignment, asks to visualize the current plan with VisualPlan, align the current goal, review whether the agent understood the request, or create an alignment checkpoint.
 ---
 
 # VisualPlan Alignment
 
-Use VisualPlan to create a reviewable alignment artifact before implementation
-or before continuing a risky goal. The artifact should show the agent's current
-mental model, not a linear TODO list.
+Use this skill only after an explicit user invocation. It creates an IDE-native
+VisualPlan alignment artifact for the current project so the user can Cmd-click
+an absolute Markdown path from VSCode, Cursor, or another IDE terminal.
+
+Product repo: `https://github.com/QIANSUIMINGMINGMING/visualplan`
+Product issues: `https://github.com/QIANSUIMINGMINGMING/visualplan/issues`
 
 ## Choose Mode
 
@@ -24,35 +27,43 @@ mental model, not a linear TODO list.
 
 ## Workflow
 
-1. Inspect the latest user prompt, visible conversation context, active plan or
-   goal if available, and any relevant repo evidence.
-2. Create `visualplan.yaml` with `mode`, `source`, `title`, `intent`,
-   `objects`, `relations`, `space`, `focus`, `uncertainties`, and `revisions`.
+1. Inspect the latest user request, visible plan/goal/session context, and repo
+   evidence needed for alignment.
+2. Write the artifact in the current project at `.visualplan/visualplan.yaml`.
+   Include `mode`, `source`, `title`, `intent`, `objects`, `relations`,
+   `space`, `focus`, `uncertainties`, and `revisions`.
 3. Use stable IDs for every addressable object, relation, and uncertainty. Good
    IDs look like `edit_surface`, `rel_plan_to_validation`, and `unc_goal_gap`.
 4. Include at least one explicit boundary or uncertainty when the user is
    asking for alignment.
-5. Validate:
+5. Validate and render:
 
    ```bash
-   visualplan validate visualplan.yaml --json
+   mkdir -p .visualplan
+   visualplan validate .visualplan/visualplan.yaml --json
+   visualplan render .visualplan/visualplan.yaml --out-dir .visualplan/render --json
    ```
 
-6. Start the local review:
+6. Return `primaryPath` first, then `svgPath`, key `objectIds`, `relationIds`,
+   `uncertaintyIds`, and warnings. Stop before implementation until the user
+   approves or corrects the artifact.
 
-   ```bash
-   visualplan review visualplan.yaml --json
-   ```
+## Follow-Up Issue Flow
 
-7. Return the `localUrl`, key `objectIds`, `relationIds`, `uncertaintyIds`, and
-   warnings. Stop before implementation until the user approves or corrects the
-   artifact.
+When using VisualPlan in any project reveals a VisualPlan product bug, workflow
+gap, missing feature, bad default, or confusing behavior, create a GitHub issue
+in `QIANSUIMINGMINGMING/visualplan`, not in the current project, unless the
+user explicitly asks otherwise. Include the originating project context,
+VisualPlan command, `primaryPath` or relevant stable IDs, observed behavior,
+expected behavior, and acceptance checks.
+
+Later, open a Codex session in the VisualPlan repository and fix those issues
+one by one from that directory.
 
 ## Quality Bar
 
-- The diagram must represent goals, boundaries, risks, evidence, or
-  understanding, not only task order.
-- Stable IDs must be useful for user corrections in chat.
-- Do not intercept or modify Codex built-in `/plan` or `/goal`; use the
-  VisualPlan CLI as a normal tool.
-- Do not create an MCP server or private deployment setup for this workflow.
+- The artifact must expose agent-user alignment: intent, assumptions,
+  boundaries, risk, evidence, uncertainty, or success criteria.
+- Do not output only a linear TODO list.
+- Do not start a browser review server, Caddy relay, or persistent service.
+- Do not use this skill unless the user explicitly invoked it.

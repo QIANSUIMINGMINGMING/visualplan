@@ -5,7 +5,6 @@ import { realpathSync } from "node:fs";
 import { loadVisualPlan } from "./load.js";
 import { renderToFiles } from "./render.js";
 import { initScenario, listScenarioInfos } from "./init.js";
-import { prepareReview, ReviewInputError, setReviewLocalUrl, startReviewServer, type PreparedReview } from "./review.js";
 import { watchVisualPlan } from "./watch.js";
 import {
   alignmentModes,
@@ -30,9 +29,9 @@ interface JsonSuccess {
   command: string;
   mode: AlignmentMode;
   inputPath: string | null;
-  htmlPath: string | null;
+  primaryPath: string | null;
+  markdownPath: string | null;
   svgPath: string | null;
-  localUrl: string | null;
   objectIds: string[];
   relationIds: string[];
   uncertaintyIds: string[];
@@ -95,29 +94,14 @@ function usage(): string {
     "  visualplan init --scenario <name> [--out <file>]",
     "  visualplan scenarios [--mode <mode>] [--json]",
     "  visualplan validate <file> [--json]",
-    "  visualplan render <file> [--out-dir <dir>] [--html <file>] [--svg <file>] [--json]",
-    "  visualplan watch <file> [--out-dir <dir>] [--port <port>] [--host <host>] [--json]",
-    "  visualplan review <file-or-output-dir-or-html> [--port 8502] [--host 127.0.0.1] [--out-dir .visualplan/review] [--no-server] [--json]",
+    "  visualplan render <file> [--out-dir <dir>] [--md <file>] [--svg <file>] [--json]",
+    "  visualplan watch <file> [--out-dir <dir>] [--md <file>] [--svg <file>] [--json]",
   ].join("\n");
 }
 
 function optionString(options: ParsedOptions, key: string): string | undefined {
   const value = options.values[key];
   return typeof value === "string" ? value : undefined;
-}
-
-function optionNumber(options: ParsedOptions, key: string): number | undefined {
-  const value = optionString(options, key);
-  if (value === undefined) {
-    return undefined;
-  }
-  const parsed = Number(value);
-  if (!Number.isInteger(parsed) || parsed < 0 || parsed > 65535) {
-    throw new CommandError(`invalid --${key}: ${value}`, [
-      { path: `--${key}`, message: "must be an integer from 0 to 65535" },
-    ]);
-  }
-  return parsed;
 }
 
 function optionMode(options: ParsedOptions, key: string): AlignmentMode | undefined {
@@ -135,10 +119,6 @@ function optionMode(options: ParsedOptions, key: string): AlignmentMode | undefi
 
 function wantsJson(args: string[]): boolean {
   return args.includes("--json");
-}
-
-function displayHost(host: string): string {
-  return host === "0.0.0.0" ? "127.0.0.1" : host;
 }
 
 function modeFor(plan: VisualPlan): AlignmentMode {
@@ -159,9 +139,9 @@ function successBase(command: string, mode: AlignmentMode): JsonSuccess {
     command,
     mode,
     inputPath: null,
-    htmlPath: null,
+    primaryPath: null,
+    markdownPath: null,
     svgPath: null,
-    localUrl: null,
     objectIds: [],
     relationIds: [],
     uncertaintyIds: [],
@@ -195,8 +175,19 @@ async function loadValidPlan(filePath: string): Promise<{
   };
 }
 
+function rejectOptions(options: ParsedOptions, keys: string[], message: string): void {
+  for (const key of keys) {
+    if (Object.prototype.hasOwnProperty.call(options.values, key)) {
+      throw new CommandError(`unsupported --${key}`, [
+        { path: `--${key}`, message },
+      ]);
+    }
+  }
+}
+
 async function renderCommand(args: string[], io: CliIo, json: boolean): Promise<void> {
   const options = parseOptions(args);
+  rejectOptions(options, ["html"], "HTML output has been removed; use --md for the Markdown review file");
   const filePath = options.positionals[0];
   if (!filePath) {
     throw new CommandError(`missing file\n\n${usage()}`, [
@@ -213,7 +204,7 @@ async function renderCommand(args: string[], io: CliIo, json: boolean): Promise<
 
   const output = await renderToFiles(filePath, loaded.plan, {
     outDir: optionString(options, "out-dir"),
-    htmlPath: optionString(options, "html"),
+    markdownPath: optionString(options, "md"),
     svgPath: optionString(options, "svg"),
     generatedAt: new Date(),
   });
@@ -222,7 +213,8 @@ async function renderCommand(args: string[], io: CliIo, json: boolean): Promise<
     writeJson(io, {
       ...successBase("render", modeFor(loaded.plan)),
       inputPath: resolve(filePath),
-      htmlPath: output.htmlPath,
+      primaryPath: output.primaryPath,
+      markdownPath: output.markdownPath,
       svgPath: output.svgPath,
       ...idsFor(loaded.plan),
       warnings: loaded.warnings,
@@ -230,7 +222,7 @@ async function renderCommand(args: string[], io: CliIo, json: boolean): Promise<
     return;
   }
 
-  io.stdout(`wrote ${output.htmlPath}\n`);
+  io.stdout(`${output.primaryPath}\n`);
   io.stdout(`wrote ${output.svgPath}\n`);
 }
 
@@ -266,6 +258,8 @@ async function validateCommand(args: string[], io: CliIo, json: boolean): Promis
 
 async function watchCommand(args: string[], io: CliIo, json: boolean): Promise<void> {
   const options = parseOptions(args);
+  rejectOptions(options, ["html"], "HTML output has been removed; use --md for the Markdown review file");
+  rejectOptions(options, ["port", "host"], "watch no longer starts a local browser review server");
   const filePath = options.positionals[0];
   if (!filePath) {
     throw new CommandError(`missing file\n\n${usage()}`, [
@@ -276,6 +270,8 @@ async function watchCommand(args: string[], io: CliIo, json: boolean): Promise<v
   const loaded = await loadValidPlan(filePath);
   const watcher = await watchVisualPlan(filePath, {
     outDir: optionString(options, "out-dir"),
+    markdownPath: optionString(options, "md"),
+    svgPath: optionString(options, "svg"),
     generatedAt: new Date(),
     logger: (message) => {
       if (!json) {
@@ -284,49 +280,19 @@ async function watchCommand(args: string[], io: CliIo, json: boolean): Promise<v
     },
   });
   const output = watcher.lastOutput() as OutputPaths;
-  const port = optionNumber(options, "port");
-  const host = optionString(options, "host") ?? "127.0.0.1";
-  let localUrl: string | null = null;
-
-  if (port !== undefined) {
-    const prepared: PreparedReview = {
-      currentDir: resolve(optionString(options, "out-dir") ?? "."),
-      outDir: resolve(optionString(options, "out-dir") ?? "."),
-      metadata: {
-        ...successBase("review", modeFor(loaded.plan)),
-        command: "review" as const,
-        inputPath: resolve(filePath),
-        htmlPath: output.htmlPath,
-        svgPath: output.svgPath,
-        localUrl,
-        ...idsFor(loaded.plan),
-        warnings: loaded.warnings,
-        title: loaded.plan.title,
-        updatedAt: new Date().toISOString(),
-        outputDir: resolve(optionString(options, "out-dir") ?? "."),
-        reviewId: "watch",
-      },
-    };
-    const server = await startReviewServer(prepared, { host, port });
-    localUrl = server.localUrl;
-    prepared.metadata.localUrl = localUrl;
-  }
 
   if (json) {
     writeJson(io, {
       ...successBase("watch", modeFor(loaded.plan)),
       inputPath: resolve(filePath),
-      htmlPath: output.htmlPath,
+      primaryPath: output.primaryPath,
+      markdownPath: output.markdownPath,
       svgPath: output.svgPath,
-      localUrl,
       ...idsFor(loaded.plan),
       warnings: loaded.warnings,
     });
   } else {
     io.stdout("watching for changes\n");
-    if (localUrl) {
-      io.stdout(`serving ${localUrl}\n`);
-    }
   }
 
   const close = (): void => {
@@ -380,60 +346,6 @@ async function scenariosCommand(args: string[], io: CliIo, json: boolean): Promi
   io.stdout(`${scenarios.map((scenario) => scenario.name).join("\n")}\n`);
 }
 
-async function reviewCommand(args: string[], io: CliIo, json: boolean): Promise<void> {
-  const options = parseOptions(args);
-  const source = options.positionals[0];
-  if (!source) {
-    throw new CommandError(`missing source\n\n${usage()}`, [
-      { path: "$.inputPath", message: "missing source" },
-    ]);
-  }
-
-  const prepared = await prepareReview(source, {
-    outDir: optionString(options, "out-dir"),
-    generatedAt: new Date(),
-  });
-  const host = optionString(options, "host") ?? "127.0.0.1";
-  const port = optionNumber(options, "port") ?? 8502;
-
-  if (options.values["no-server"] === true) {
-    await setReviewLocalUrl(prepared, `http://${displayHost(host)}:${port}/`);
-    if (json) {
-      writeJson(io, prepared.metadata);
-    } else {
-      io.stdout(`staged_review=${prepared.metadata.title}\n`);
-      io.stdout(`html_path=${prepared.metadata.htmlPath}\n`);
-      if (prepared.metadata.svgPath) {
-        io.stdout(`svg_path=${prepared.metadata.svgPath}\n`);
-      }
-      io.stdout(`local_url=${prepared.metadata.localUrl}\n`);
-    }
-    return;
-  }
-
-  const server = await startReviewServer(prepared, {
-    host,
-    port,
-  });
-
-  if (json) {
-    writeJson(io, prepared.metadata);
-  } else {
-    io.stdout(`current_review=${prepared.metadata.title}\n`);
-    io.stdout(`html_path=${prepared.metadata.htmlPath}\n`);
-    if (prepared.metadata.svgPath) {
-      io.stdout(`svg_path=${prepared.metadata.svgPath}\n`);
-    }
-    io.stdout(`local_url=${server.localUrl}\n`);
-  }
-
-  const close = (): void => {
-    void server.close().finally(() => process.exit(0));
-  };
-  process.on("SIGINT", close);
-  process.on("SIGTERM", close);
-}
-
 function failureFor(command: string, error: unknown): JsonFailure {
   if (error instanceof CommandError) {
     return {
@@ -441,14 +353,6 @@ function failureFor(command: string, error: unknown): JsonFailure {
       command,
       errors: error.issues,
       exitCode: error.exitCode,
-    };
-  }
-  if (error instanceof ReviewInputError) {
-    return {
-      ok: false,
-      command,
-      errors: error.issues,
-      exitCode: 1,
     };
   }
   const message = error instanceof Error ? error.message : String(error);
@@ -494,11 +398,6 @@ export async function runCli(argv = process.argv.slice(2), io: CliIo = {
       await scenariosCommand(args, io, json);
       return 0;
     }
-    if (command === "review") {
-      await reviewCommand(args, io, json);
-      return 0;
-    }
-
     throw new CommandError(`unknown command '${command}'\n\n${usage()}`, [
       { path: "$.command", message: `unknown command '${command}'` },
     ]);
